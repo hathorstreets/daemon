@@ -17,6 +17,12 @@ public class City {
 
    private String name;
 
+   private Boolean deleted;
+
+   private Boolean requestImage;
+
+   private String ipfs;
+
    @OneToMany(mappedBy="city", fetch = FetchType.EAGER)
    private Set<CityStreet> streets;
 
@@ -50,5 +56,29 @@ public class City {
 
    public void setName(String name) {
       this.name = name;
+   }
+
+   public Boolean getDeleted() {
+      return deleted;
+   }
+
+   public void setDeleted(Boolean deleted) {
+      this.deleted = deleted;
+   }
+
+   public Boolean getRequestImage() {
+      return requestImage;
+   }
+
+   public void setRequestImage(Boolean requestImage) {
+      this.requestImage = requestImage;
+   }
+
+   public String getIpfs() {
+      return ipfs;
+   }
+
+   public void setIpfs(String ipfs) {
+      this.ipfs = ipfs;
    }
 }

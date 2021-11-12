@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface StreetRepository extends CrudRepository<Street, Integer> {
 
-   @Query(nativeQuery = true, value = "SELECT * FROM street s WHERE s.taken = 0 order by token LIMIT :count")
+   @Query(nativeQuery = true, value = "SELECT * FROM street s WHERE s.taken = 0 order by RAND() LIMIT :count")
    List<Street> findNotTaken(@Param("count") int count);
 
    List<Street> findByTakenAndStreetAttributesBillboard(boolean taken, String billboard);
