@@ -3,10 +3,13 @@ package com.hathor.daemon.services;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.google.gson.Gson;
 import com.hathor.daemon.services.dto.Output;
 import com.hathor.daemon.services.dto.Response;
 import com.hathor.daemon.services.dto.SendResponse;
 import com.hathor.daemon.services.dto.SendTransaction;
+import com.hathor.daemon.services.image.NftAttribute;
+import com.hathor.daemon.services.image.NftProperties;
 import com.hathor.daemon.services.image.PinataResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
@@ -17,12 +20,10 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.annotation.PostConstruct;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStream;
+import java.io.*;
 
 @Service
 public class PinataService {
@@ -37,17 +38,44 @@ public class PinataService {
    @Value("${pinata.secret}")
    private String secret;
 
+   private final Gson gson;
+
    public PinataService(RestTemplate restTemplate) {
       this.restTemplate = restTemplate;
+      this.gson = new Gson();
    }
 
+//   @PostConstruct
+//   public void init() throws Exception {
+//      NftProperties properties = new NftProperties();
+//      properties.setName("Maros City");
+//      properties.setDescription("Maros City");
+//      properties.setFile("Test");
+//      properties.getAttributes().add(new NftAttribute("Hathor Street", "#1"));
+//      uploadJson(properties);
+//   }
+
    public String uploadFile(String name, BufferedImage image) throws Exception {
+      return uploadFile(name, getFile(image, name));
+   }
+
+   public String uploadJson(NftProperties nft) throws Exception {
+      String json = gson.toJson(nft);
+      File file = new File(nft.getName() + ".json");
+      FileWriter fileWriter = new FileWriter(file);
+      fileWriter.write(json);
+      fileWriter.flush();
+      fileWriter.close();
+
+      FileSystemResource fsr = new FileSystemResource(file);
+      return uploadFile(nft.getName() + ".json", fsr);
+   }
+
+   public String uploadFile(String name, FileSystemResource fsr) throws Exception {
       HttpHeaders headers = new HttpHeaders();
       headers.add("pinata_api_key", key);
       headers.add("pinata_secret_api_key", secret);
       headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-      FileSystemResource fsr = getFile(image, name);
 
       MultiValueMap<String, Object> map = new LinkedMultiValueMap<>();
       map.add("file", fsr);
