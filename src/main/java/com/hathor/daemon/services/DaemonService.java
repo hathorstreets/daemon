@@ -28,15 +28,18 @@ public class DaemonService {
    private final WalletService walletService;
    private final StreetRepository streetRepository;
    private final RetryTemplate retryTemplate;
+   private final MailService mailService;
 
    public DaemonService(MintRepository mintRepository,
                         WalletService walletService,
                         StreetRepository streetRepository,
-                        RetryTemplate retryTemplate){
+                        RetryTemplate retryTemplate,
+                        MailService mailService){
       this.mintRepository = mintRepository;
       this.walletService = walletService;
       this.streetRepository = streetRepository;
       this.retryTemplate = retryTemplate;
+      this.mailService = mailService;
    }
 
    @Scheduled(fixedDelay = 10000)
@@ -218,6 +221,9 @@ public class DaemonService {
             });
          } catch (Exception ex) {
             logger.error("FATAL! Could not save mint " + mint.getId() + " to state NFT_SENT when STREETS were sent!", ex);
+         }
+         if(mint.getEmail() != null) {
+            mailService.sendMail(mint);
          }
       }
    }
