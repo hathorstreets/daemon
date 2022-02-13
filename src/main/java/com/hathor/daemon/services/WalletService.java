@@ -253,6 +253,32 @@ public class WalletService {
       return null;
    }
 
+   public boolean checkNftBalance(String address, String token) {
+      MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
+      headers.add("X-Wallet-Id", RECEIVE_ID);
+
+      try {
+         ResponseEntity<Balance> response = restTemplate.exchange(URL_RECEIVE + "wallet/utxo-filter?filter_address=" + address + "&token=" + token, HttpMethod.GET, new HttpEntity<>(headers),
+                 Balance.class);
+
+         if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+            return response.getBody().getTotal_amount_available() > 0;
+         }
+      } catch (Exception ex) {
+         logger.error("Unable to get balance for address " + address, ex);
+      }
+
+      return false;
+   }
+
+   public String burnTokens(List<String> tokens){
+      logger.info("Burning tokens!");
+      for(String token : tokens) {
+         logger.info("Burning token " + token);
+      }
+      return sendTokens("HDeadDeadDeadDeadDeadDeadDeagTPgmn", tokens);
+   }
+
    public String sendTokens(String address, List<String> tokens) {
       logger.info("Sending tokens to " + address);
       HttpHeaders headers = new HttpHeaders();
