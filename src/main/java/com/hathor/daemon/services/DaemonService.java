@@ -42,7 +42,7 @@ public class DaemonService {
       this.mailService = mailService;
    }
 
-   @Scheduled(fixedDelay = 10000)
+   //@Scheduled(fixedDelay = 10000)
    public void checkAddresses() {
       logger.info("Loop started");
 

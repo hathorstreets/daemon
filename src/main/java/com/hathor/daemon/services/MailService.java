@@ -23,7 +23,7 @@ public class MailService {
    @Value("${mail.password}")
    private String password;
 
-   Logger logger = LoggerFactory.getLogger(NftService.class);
+   Logger logger = LoggerFactory.getLogger(MailService.class);
 
    private final MintRepository mintRepository;
 

@@ -100,7 +100,7 @@ public class ImageService {
 
          BufferedImage streetImage = getStreetImage(sa);
 
-         tiles.add(new ImageTile(x.intValue(), y.intValue(), streetImage));
+         tiles.add(new ImageTile(x.intValue(), y.intValue(), streetImage, false));
       }
 
       int snapWidth = STREET_WIDTH_SNAP.intValue();

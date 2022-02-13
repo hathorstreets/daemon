@@ -7,6 +7,6 @@ public enum MintState {
    SENDING_NFT,
    NFT_SENT,
    OUT_OF_STREETS,
-   HTR_SENT_BACK
-
+   HTR_SENT_BACK,
+   TOKEN_BURNED,
 }

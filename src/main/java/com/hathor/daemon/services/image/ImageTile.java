@@ -7,11 +7,13 @@ public class ImageTile {
    private Integer x;
    private Integer y;
    private BufferedImage image;
+   private boolean sea;
 
-   public ImageTile(Integer x, Integer y, BufferedImage image) {
+   public ImageTile(Integer x, Integer y, BufferedImage image, boolean sea) {
       this.x = x;
       this.y = y;
       this.image = image;
+      this.sea = sea;
    }
 
    public Integer getX() {
@@ -36,5 +38,13 @@ public class ImageTile {
 
    public void setImage(BufferedImage image) {
       this.image = image;
+   }
+
+   public boolean isSea() {
+      return sea;
+   }
+
+   public void setSea(boolean sea) {
+      this.sea = sea;
    }
 }
