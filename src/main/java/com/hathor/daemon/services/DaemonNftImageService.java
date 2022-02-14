@@ -15,10 +15,7 @@ import org.springframework.retry.support.RetryTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -45,7 +42,7 @@ public class DaemonNftImageService {
       this.nftCityStreetRepository = nftCityStreetRepository;
    }
 
-   //@Scheduled(fixedDelay = 10000)
+   @Scheduled(fixedDelay = 10000)
    public void loop(){
       //LOADING CITIES TO PROCESS
       final List<NftCity> cities = new ArrayList<>();
@@ -80,6 +77,7 @@ public class DaemonNftImageService {
             String token = street.getStreet().getToken();
             tokens.add(token);
          }
+
          String hash = walletService.burnTokens(tokens);
          if(hash == null) {
             logger.error("Unable to burn tokens for city " + city.getId());
@@ -106,29 +104,80 @@ public class DaemonNftImageService {
             logger.info("Processing city " + city.getId());
             if (city.getState() == MintState.WAITING_FOR_DEPOSIT.ordinal()) {
                if (checkForStreets(city)) {
+                  logger.info("All streets received!");
                   city.setState(MintState.SENDING_NFT.ordinal());
                   retryTemplate.execute(context -> {
                      nftCityRepository.save(city);
                      return null;
                   });
+               } else {
+                  logger.info("Waiting for the streets");
                }
             }
             if (city.getState() == MintState.SENDING_NFT.ordinal()) {
+               logger.info("Creating image with traits");
                Pair<String, NftProperties> nft = nftImageService.createImage(city.getCity(), true);
+               logger.info("Creating image without traits");
                Pair<String, NftProperties> nftWithoutTraits = nftImageService.createImage(city.getCity(), false);
                if (nft != null && nft.getFirst() != null &&
                        nftWithoutTraits != null && nftWithoutTraits.getFirst() != null) {
-                  String hash = pinataService.uploadJson(nft.getSecond());
-                  String hashWithoutTraits = pinataService.uploadJson(nftWithoutTraits.getSecond());
+                  logger.info("Successfully uploaded images!");
+                  city.setIpfs("https://ipfs.io/ipfs/" + nft.getFirst());
+                  city.setIpfsWithoutTraits("https://ipfs.io/ipfs/" + nftWithoutTraits.getFirst());
 
-                  if (hash != null && hashWithoutTraits != null) {
-                     city.setIpfs(hash);
-                     city.setIpfsWithoutTraits(hashWithoutTraits);
+                  logger.info("Creating NFTs");
+                  String name = city.getCity().getName() == null || city.getCity().getName().isEmpty() ? "No name city" : city.getCity().getName();
+                  logger.info("Creating NFT with traits");
+
+                  Iterable<NftCity> allCities = nftCityRepository.findAll();
+                  List<NftCity> allCitiesList = new ArrayList<NftCity>();
+                  allCities.forEach(allCitiesList::add);
+
+                  allCitiesList.sort(new Comparator<NftCity>() {
+                     @Override
+                     public int compare(NftCity o1, NftCity o2) {
+                        return o1.getCreated().compareTo(o2.getCreated());
+                     }
+                  });
+
+                  int order = 1;
+                  boolean found = false;
+                  for(NftCity c : allCitiesList) {
+                     if (c.getId().equals(city.getId())) {
+                        found = true;
+                        break;
+                     }
+                     order++;
+                  }
+
+                  String symbol = "HSC";
+                  String symbolWoTraits = "HSCC";
+                  if(found) {
+                     symbol = "HSC" + order;
+                     symbolWoTraits = "HSCC" + order;
+                  }
+                  String nftHashWithTraits = walletService.createNft(name, symbol, "ipfs://ipfs/" + nft.getFirst());
+                  logger.info("Creating NFT without traits");
+                  String nftHashWithoutTraits = walletService.createNft(name, symbolWoTraits, "ipfs://ipfs/" + nftWithoutTraits.getFirst());
+                  city.setToken(nftHashWithTraits);
+                  city.setTokenWithoutTraits(nftHashWithoutTraits);
+                  retryTemplate.execute(context -> {
+                     nftCityRepository.save(city);
+                     return null;
+                  });
+                  logger.info("NFTs saved!");
+
+                  logger.info("Sending NFTs");
+                  String hash = walletService.sendTokens(city.getUserAddress(), Arrays.asList(nftHashWithTraits, nftHashWithoutTraits));
+                  if(hash != null) {
+                     logger.info("NFTs sent! " + hash);
                      city.setState(MintState.NFT_SENT.ordinal());
                      retryTemplate.execute(context -> {
                         nftCityRepository.save(city);
                         return null;
                      });
+                  } else {
+                     logger.error("Could not send NFTs");
                   }
                }
             }
@@ -168,14 +217,18 @@ public class DaemonNftImageService {
          String token = street.getStreet().getToken();
          if(!street.isSent()) {
             if (walletService.checkNftBalance(city.getDepositAddress().getAddress(), token)) {
+               logger.info("Street " + street.getStreet().getId() + " received!");
                street.setSent(true);
                retryTemplate.execute(context -> {
                   nftCityStreetRepository.save(street);
                   return null;
                });
             } else {
+               logger.info("Street " + street.getStreet().getId() + " NOT received yet!");
                result = false;
             }
+         } else {
+            logger.info("Street " + street.getStreet().getId() + " received!");
          }
       }
 

@@ -281,14 +281,8 @@ public class NftImageService {
          cityName = "No Name";
       }
       cityName = cityName + UUID.randomUUID() + ".png";
-      //String hash = pinataService.uploadFile(cityName, cityImage);
-
-      String hash = "hash";
+      String hash = pinataService.uploadFile(cityName, cityImage);
       NftProperties nft = createJson(hash, city);
-
-
-      File cityImageFile = new File("mesta/" + cityName);
-      ImageIO.write(cityImage, "png", cityImageFile);
 
       return Pair.of(hash, nft);
    }

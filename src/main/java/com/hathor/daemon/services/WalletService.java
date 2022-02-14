@@ -276,7 +276,7 @@ public class WalletService {
       for(String token : tokens) {
          logger.info("Burning token " + token);
       }
-      return sendTokens("HDeadDeadDeadDeadDeadDeadDeagTPgmn", tokens);
+      return sendTokensFromReceive("HDeadDeadDeadDeadDeadDeadDeagTPgmn", tokens);
    }
 
    public String sendTokens(String address, List<String> tokens) {
@@ -308,6 +308,49 @@ public class WalletService {
 
       try {
          ResponseEntity<SendResponse> response = restTemplate.postForEntity(URL_SEND + "wallet/send-tx", request, SendResponse.class);
+
+         if (response.getBody() != null && response.getBody().isSuccess()) {
+            logger.info("Successfully sent tokens to {}", address);
+            return response.getBody().getHash();
+         } else {
+            logger.error("Unable to send to address " + address);
+         }
+      } catch (Exception ex) {
+         logger.error("Unable to send to address " + address, ex);
+      }
+
+      return null;
+   }
+
+   public String sendTokensFromReceive(String address, List<String> tokens) {
+      logger.info("Sending tokens to " + address);
+      HttpHeaders headers = new HttpHeaders();
+      headers.add("X-Wallet-Id", RECEIVE_ID);
+      headers.setContentType(MediaType.APPLICATION_JSON);
+
+      SendTransaction transaction = new SendTransaction();
+      for (String token : tokens) {
+         logger.info("Adding token " + token);
+         Output output = new Output();
+         output.setAddress(address);
+         output.setValue(1);
+         output.setToken(token);
+         transaction.getOutputs().add(output);
+      }
+
+      String json;
+      ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
+      try {
+         json = ow.writeValueAsString(transaction);
+      } catch (JsonProcessingException ex) {
+         logger.error("Failed to create json for sendTokens to address " + address, ex);
+         return null;
+      }
+
+      HttpEntity<String> request = new HttpEntity<>(json, headers);
+
+      try {
+         ResponseEntity<SendResponse> response = restTemplate.postForEntity(URL_RECEIVE + "wallet/send-tx", request, SendResponse.class);
 
          if (response.getBody() != null && response.getBody().isSuccess()) {
             logger.info("Successfully sent tokens to {}", address);

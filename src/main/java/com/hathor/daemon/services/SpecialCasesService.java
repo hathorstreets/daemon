@@ -4,6 +4,7 @@ import com.hathor.daemon.data.entities.Street;
 import com.hathor.daemon.data.repositories.StreetRepository;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -15,6 +16,50 @@ public class SpecialCasesService {
 
    private final WalletService walletService;
    private final StreetRepository streetRepository;
+
+   //@PostConstruct
+   public void init(){
+      //sendMultipleNfts("HVaFATkQzzxnYvXxdWFxWatZj7UjBkqeC1", Arrays.asList(4592), false);
+
+      String[] addresses = new String[]{
+              "HUEM4xkTRAxJFKreg61Y6EcEbUMkUmmB5n",
+              "HDCAQSyREgxBpqYdqzPJxCEyNnFQuUsevy",
+              "HLyrKB7EGcySNTrKfxhSRxSymeetDn8NUm",
+              "HEMJnpureGdhifNTe4kXqsZd3wH3ZTNiiW",
+              "HAHAK5ivrQhmyRTwRQrrxdBEEFtaK1v1d6",
+              "HCDko3gfRQriyTadxqYuygdtHhiVEEjT6K",
+              "HVPsDhVg3TJSBD5atbfbqkbLv799aeLjX1",
+              "HHJk1TUNhjtmmBnb4c5iCfQgbp4avoH34n",
+              "HPvsovCv7dAFeZktVarovE7W1ZjUHCCfi3",
+              "HRCM3gv5jTJhu4U7tWjtuFjsDyKL7oRTE3",
+              "HQxA5QH9CUxyhdvyeaDGDgCu6LZwhRRkA8",
+              "HHT6cLwDvsYCAFZYEdxyg4ipws2BMDN23j",
+              "HP5KPknGAK55Z7PmNaNfEnbSzhMaskKTJJ",
+              "H8HHx8H9uWeKgz9sCbzHRHU5qtbpx5on3j",
+              "HQRULNyDQB3wWSuGPDz3BB1xQSk6YW6jfK",
+              "HFURHw7qe7SySJkAtYJeDXPP7NmYy62jth",
+              "HCjovaH8JVTZRVna9JWG4T5CCDfi1wFpjZ",
+              "HVghiGRnYEXpqnEDwYHdKnvJqqcEZZNCzH",
+              "HU6U4u49VhZD1mR9o3XQ6AQF33vA52MMnv",
+              "HRqBnWGraeX9Z5UGYCG7897gyoj6yugNSi",
+              "HNpJMcjmy372yiiV9mwFR25YHW2QKwgXPd",
+              "HVKagT8gxgbSgVzVdAUg79hcnFJ2wtWpyx",
+              "HJrXohBdtHmxye6AHY39QC33jeA248RNyd",
+              "H9iD8Z2aYutfUuM3BrKKvGSHjLzGWdnmTY",
+              "HDT2FQJY6uzeKn6yqA5q9JyWzzXn2abhNy",
+              "HEreLc7tTmLFpoC368y59ETLxbyZcSzgmp",
+              "HAyK9s4C2R6hQHSMaM1JbwHNPvB7Sj6qdf",
+              "HJgLAojGjKUKonArxCkLyqn3uNt2nCAfKP",
+              "HMSWkzGKaryqdo5ysxo8hVXwxaU2zVvx9M",
+              "HGcpEpP6ajnHb16XPAuUrbUPUzyv5wbFEz",
+              "HJ7pSyLnwmJg5p9aDFdkEvpbQQmiJ6hbbX",
+              "HRytBhuxML1q9q9dsoTdbSFF9jsShgHr7C",
+              "HKm78P6P7WyqS1R3dnaMijau1wPbtDJPEF"
+      };
+//      for(String address : addresses) {
+//         sendRandomNft(address);
+//      }
+   }
 
 
    public SpecialCasesService(WalletService walletService, StreetRepository streetRepository) {
@@ -51,6 +96,23 @@ public class SpecialCasesService {
 //
 //      street.setStreetAttributes(attributes);
       //streetRepository.save(street);
+   }
+
+   private void sendRandomNft(String address) {
+      List<Street> streetList = streetRepository.findNotTaken(1);
+      if(streetList.size() > 0) {
+         List<String> tokens = streetList.stream().map(street -> street.getToken()).collect(Collectors.toList());
+         String hash = walletService.sendTokens(address, tokens);
+         if(hash != null) {
+            //System.out.println("Address " + address);
+            //System.out.println("Transaction " + hash);
+            for(Street street : streetList) {
+               System.out.println("https://www.hathorstreets.com/explorer.html?id=" + street.getId());
+               street.setTaken(true);
+            }
+            streetRepository.saveAll(streetList);
+         }
+      }
    }
 
    public void sendMultipleNfts(String address, List<Integer> numbers, boolean checkTaken) {
