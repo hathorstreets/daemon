@@ -25,6 +25,10 @@ public class NftCity {
 
    private String ipfsWithoutTraits;
 
+   private String jsonIpfs;
+
+   private String jsonIpfsWithoutTraits;
+
    private String transaction;
 
    @ManyToOne
@@ -152,5 +156,21 @@ public class NftCity {
 
    public void setBurnTransaction(String burnTransaction) {
       this.burnTransaction = burnTransaction;
+   }
+
+   public String getJsonIpfs() {
+      return jsonIpfs;
+   }
+
+   public void setJsonIpfs(String jsonIpfs) {
+      this.jsonIpfs = jsonIpfs;
+   }
+
+   public String getJsonIpfsWithoutTraits() {
+      return jsonIpfsWithoutTraits;
+   }
+
+   public void setJsonIpfsWithoutTraits(String jsonIpfsWithoutTraits) {
+      this.jsonIpfsWithoutTraits = jsonIpfsWithoutTraits;
    }
 }

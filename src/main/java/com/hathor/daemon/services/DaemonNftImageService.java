@@ -33,8 +33,8 @@ public class DaemonNftImageService {
    Logger logger = LoggerFactory.getLogger(DaemonImageService.class);
 
    public DaemonNftImageService(CityRepository cityRepository, NftImageService nftImageService,
-           NftCityRepository nftCityRepository, RetryTemplate retryTemplate, WalletService walletService, PinataService pinataService, NftCityStreetRepository nftCityStreetRepository,
-           StreetRepository streetRepository) {
+                                NftCityRepository nftCityRepository, RetryTemplate retryTemplate, WalletService walletService, PinataService pinataService, NftCityStreetRepository nftCityStreetRepository,
+                                StreetRepository streetRepository) {
       this.cityRepository = cityRepository;
       this.nftImageService = nftImageService;
       this.nftCityRepository = nftCityRepository;
@@ -129,20 +129,12 @@ public class DaemonNftImageService {
                }
             }
             if (city.getState() == MintState.SENDING_NFT.ordinal()) {
-               logger.info("Creating image with traits");
-               Pair<String, String> nft = nftImageService.createImage(city.getCity(), true);
-               logger.info("Creating image without traits");
-               Pair<String, String> nftWithoutTraits = nftImageService.createImage(city.getCity(), false);
-               if (nft != null && nft.getFirst() != null && nft.getSecond() != null &&
-                   nftWithoutTraits != null && nftWithoutTraits.getFirst() != null && nftWithoutTraits.getSecond() != null) {
+               initImages(city);
+               if (city.getJsonIpfs() != null && city.getJsonIpfsWithoutTraits() != null) {
                   logger.info("Successfully uploaded images!");
-                  city.setIpfs("https://ipfs.io/ipfs/" + nft.getFirst());
-                  city.setIpfsWithoutTraits("https://ipfs.io/ipfs/" + nftWithoutTraits.getFirst());
 
                   logger.info("Creating NFTs");
                   String name = city.getCity().getName() == null || city.getCity().getName().isEmpty() ? "No name city" : city.getCity().getName();
-                  logger.info("Creating NFT with traits");
-
                   Iterable<NftCity> allCities = nftCityRepository.findAll();
                   List<NftCity> allCitiesList = new ArrayList<NftCity>();
                   allCities.forEach(allCitiesList::add);
@@ -164,34 +156,50 @@ public class DaemonNftImageService {
                      order++;
                   }
 
-                  String symbol = "HSC";
-                  String symbolWoTraits = "HSCC";
-                  if(found) {
-                     symbol = "HSC" + order;
-                     symbolWoTraits = "HSCC" + order;
+                  if (order > 99) {
+                     order = order % 100;
                   }
-                  String nftHashWithTraits = walletService.createNft(name, symbol, "ipfs://ipfs/" + nft.getSecond());
-                  logger.info("Creating NFT without traits");
-                  String nftHashWithoutTraits = walletService.createNft(name, symbolWoTraits, "ipfs://ipfs/" + nftWithoutTraits.getSecond());
-                  city.setToken(nftHashWithTraits);
-                  city.setTokenWithoutTraits(nftHashWithoutTraits);
+
+                  String symbol = "HS";
+                  String symbolWoTraits = "HSC";
+                  if(found) {
+                     symbol = "HS" + order;
+                     symbolWoTraits = "HSC" + order;
+                  }
+                  if(city.getToken() == null) {
+                     logger.info("Creating NFT with traits");
+                     String nftHashWithTraits = walletService.createNft(name, symbol, city.getJsonIpfs());
+                     city.setToken(nftHashWithTraits);
+                  }
+
+                  Thread.sleep(1000);
+
+                  if(city.getTokenWithoutTraits() == null){
+                     logger.info("Creating NFT without traits");
+                     String nftHashWithoutTraits = walletService.createNft(name, symbolWoTraits, city.getJsonIpfsWithoutTraits());
+                     city.setTokenWithoutTraits(nftHashWithoutTraits);
+                  }
+
                   retryTemplate.execute(context -> {
                      nftCityRepository.save(city);
                      return null;
                   });
+
                   logger.info("NFTs saved!");
 
-                  logger.info("Sending NFTs");
-                  String hash = walletService.sendTokens(city.getUserAddress(), Arrays.asList(nftHashWithTraits, nftHashWithoutTraits));
-                  if(hash != null) {
-                     logger.info("NFTs sent! " + hash);
-                     city.setState(MintState.NFT_SENT.ordinal());
-                     retryTemplate.execute(context -> {
-                        nftCityRepository.save(city);
-                        return null;
-                     });
-                  } else {
-                     logger.error("Could not send NFTs");
+                  if(city.getToken() != null && city.getTokenWithoutTraits() != null) {
+                     logger.info("Sending NFTs");
+                     String hash = walletService.sendTokens(city.getUserAddress(), Arrays.asList(city.getToken(), city.getTokenWithoutTraits()));
+                     if (hash != null) {
+                        logger.info("NFTs sent! " + hash);
+                        city.setState(MintState.NFT_SENT.ordinal());
+                        retryTemplate.execute(context -> {
+                           nftCityRepository.save(city);
+                           return null;
+                        });
+                     } else {
+                        logger.error("Could not send NFTs");
+                     }
                   }
                }
             }
@@ -261,6 +269,37 @@ public class DaemonNftImageService {
                   return null;
                });
             }
+         }
+      }
+   }
+
+   private void initImages(NftCity city) throws Exception {
+      if(city.getJsonIpfs() == null) {
+         logger.info("Creating image with traits");
+         Pair<String, String> nft = nftImageService.createImage(city.getCity(), true);
+
+         if (nft != null && nft.getFirst() != null && nft.getSecond() != null) {
+            logger.info("Successfully uploaded image!");
+            city.setIpfs("https://ipfs.io/ipfs/" + nft.getFirst());
+            city.setJsonIpfs("ipfs://ipfs/" + nft.getSecond());
+            retryTemplate.execute(context -> {
+               nftCityRepository.save(city);
+               return null;
+            });
+         }
+      }
+      if(city.getJsonIpfsWithoutTraits() == null) {
+         logger.info("Creating image without traits");
+         Pair<String, String> nftWithoutTraits = nftImageService.createImage(city.getCity(), false);
+
+         if (nftWithoutTraits != null && nftWithoutTraits.getFirst() != null && nftWithoutTraits.getSecond() != null) {
+            logger.info("Successfully uploaded image!");
+            city.setIpfsWithoutTraits("https://ipfs.io/ipfs/" + nftWithoutTraits.getFirst());
+            city.setJsonIpfsWithoutTraits("ipfs://ipfs/" + nftWithoutTraits.getSecond());
+            retryTemplate.execute(context -> {
+               nftCityRepository.save(city);
+               return null;
+            });
          }
       }
    }
