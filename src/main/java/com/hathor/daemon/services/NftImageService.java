@@ -1,5 +1,6 @@
 package com.hathor.daemon.services;
 
+import com.google.gson.Gson;
 import com.hathor.daemon.data.entities.City;
 import com.hathor.daemon.data.entities.CityStreet;
 import com.hathor.daemon.data.entities.Street;
@@ -55,7 +56,7 @@ public class NftImageService {
    }
 
    //@PostConstruct
-   public void init() {
+   public void init() throws Exception {
       //male 5c5bcd89-b639-4bea-8852-285eed08dd53
       //velke 7a35e4c6-fe79-4ae9-9978-b75608635f1f
       //pokazene 0841b880-1533-43cf-98e1-f94c552db1e1
@@ -63,7 +64,9 @@ public class NftImageService {
       //deanland dobre 0202eae0-6f6d-4de8-8bcc-9c6ba3eb19d2
       // test zle 03317008-7784-46bf-b796-f47f9914befe
 
-//      City c = cityRepository.findById("7a35e4c6-fe79-4ae9-9978-b75608635f1f").get();
+     City c = cityRepository.findById("f9b0a598-fe7c-497c-95df-98d86b8324cc").get();
+     createImage(c, true);
+      createImage(c, false);
 //      try {
 //         for(int i = 0; i < 20; i++) {
 //            createImage(c, true);
@@ -73,19 +76,19 @@ public class NftImageService {
 //      }
 
 
-      int i = 1;
-      for(City c : cityRepository.findAll()) {
-         System.out.println("Creating city " + c.getName() + " " + c.getId());
-         try {
-            createImage(c, true);
-         } catch (Exception ex) {
-            ex.printStackTrace();
-         }
-         i++;
-     }
+//      int i = 1;
+//      for(City c : cityRepository.findAll()) {
+//         System.out.println("Creating city " + c.getName() + " " + c.getId());
+//         try {
+//            createImage(c, true);
+//         } catch (Exception ex) {
+//            ex.printStackTrace();
+//         }
+//         i++;
+//     }
    }
 
-   public Pair<String, NftProperties> createImage(City city, boolean withTraits) throws Exception {
+   public Pair<String, String> createImage(City city, boolean withTraits) throws Exception {
       List<CityStreet> streets = new ArrayList<>(city.getStreets());
 
       BigDecimal minX = null;
@@ -242,6 +245,19 @@ public class NftImageService {
          graph.drawImage(tile.getImage(), tile.getX() + imageBorder, tile.getY() + imageBorder, null);
       }
 
+      File itemsFolder = new File(getClass().getClassLoader().getResource("sea_tiles/sea_items").getFile());
+      List<File> files = Arrays.asList(itemsFolder.listFiles());
+      files = files.stream().sorted((o1, o2) -> o1.getName().compareTo(o2.getName())).collect(Collectors.toList());
+      int i = files.size();
+      List<SeaItemProvider.Item> items = new ArrayList<>();
+      for(File f : files) {
+         SeaItemProvider.Item item = new SeaItemProvider.Item(i, f);
+         items.add(item);
+         i--;
+      }
+
+      List<SeaItemProvider.Item> selectedItems = new ArrayList<>();
+
       if(withTraits) {
          List<ImageTile> seaTiles = new ArrayList<>();
          for (ImageTile tile : tiles) {
@@ -260,17 +276,16 @@ public class NftImageService {
 
          filtered = filtered.subList(0, Math.min(Math.max(city.getStreets().size() / 2, 1), 30));
 
-         File items = new File(getClass().getClassLoader().getResource("sea_tiles/sea_items").getFile());
-
          Set<String> usedItems = new HashSet<>();
          for (ImageTile tile : filtered) {
-            Pair<BufferedImage, String> image = getRandomSeaItem(items);
-            String fileName = image.getSecond();
+            Pair<BufferedImage, SeaItemProvider.Item> image = getRandomSeaItem(items);
+            String fileName = image.getSecond().getFile().getName();
             while(usedItems.contains(fileName)) {
                image = getRandomSeaItem(items);
-               fileName = image.getSecond();
+               fileName = image.getSecond().getFile().getName();
             }
-            usedItems.add(image.getSecond());
+            usedItems.add(image.getSecond().getFile().getName());
+            selectedItems.add(image.getSecond());
             System.out.println("Drawing " + image.getSecond() + " to " + tile.getX() + ", " + tile.getY());
             graph.drawImage(image.getFirst(), tile.getX() + imageBorder, tile.getY() + imageBorder, null);
          }
@@ -282,12 +297,19 @@ public class NftImageService {
       }
       cityName = cityName + UUID.randomUUID() + ".png";
       String hash = pinataService.uploadFile(cityName, cityImage);
-      NftProperties nft = createJson(hash, city);
 
-      return Pair.of(hash, nft);
+      //String hash = "hash";
+      //File cityImageFile = new File("mesta/" + cityName);
+      //ImageIO.write(cityImage, "png", cityImageFile);
+
+      NftProperties nft = createJson(hash, city, selectedItems);
+
+      String jsonHash = pinataService.uploadJson(nft);
+
+      return Pair.of(hash, jsonHash);
    }
 
-   private NftProperties createJson(String hash, City city) {
+   private NftProperties createJson(String hash, City city, List<SeaItemProvider.Item> items) {
       NftProperties nft = new NftProperties();
       nft.setFile("ipfs://ipfs/" + hash);
       nft.setDescription("Hathor Streets City " + city.getName());
@@ -296,6 +318,11 @@ public class NftImageService {
 
       for(CityStreet street : city.getStreets()) {
          NftAttribute attr = new NftAttribute("Hathor Street", "Number " + street.getStreetId());
+         nft.getAttributes().add(attr);
+      }
+
+      for(SeaItemProvider.Item item : items) {
+         NftAttribute attr = new NftAttribute("Sea Item", item.getName());
          nft.getAttributes().add(attr);
       }
 
@@ -318,18 +345,7 @@ public class NftImageService {
               tile.getX() <= ((width + imageBorder * 2) - STREET_WIDTH.intValue()) &&
               tile.getY() <= ((height + imageBorder * 2) - STREET_HEIGHT.intValue());
    }
-   private Pair<BufferedImage, String> getRandomSeaItem(File folder) throws Exception {
-
-      List<File> files = Arrays.asList(folder.listFiles());
-      files = files.stream().sorted((o1, o2) -> o1.getName().compareTo(o2.getName())).collect(Collectors.toList());
-      int i = files.size();
-      List<SeaItemProvider.Item> items = new ArrayList<>();
-      for(File f : files) {
-         SeaItemProvider.Item item = new SeaItemProvider.Item(i, f);
-         items.add(item);
-         i--;
-      }
-
+   private Pair<BufferedImage, SeaItemProvider.Item> getRandomSeaItem(List<SeaItemProvider.Item> items) throws Exception {
       SeaItemProvider.Item item = seaItemProvider.chooseOnWeight(items);
 
       BufferedImage image = new BufferedImage(STREET_WIDTH.intValue(), STREET_HEIGHT.intValue(), BufferedImage.TYPE_INT_ARGB);
@@ -337,7 +353,7 @@ public class NftImageService {
       Graphics2D graph = image.createGraphics();
       graph.drawImage(ImageIO.read(inputStream), 0, 0, null);
 
-      return Pair.of(image, item.getFile().getName());
+      return Pair.of(image, item);
    }
 
    private boolean checkIfInside(int x, int y, int maxX, int maxY, int minX, int minY, List<ImageTile> tiles, List<ImageTile> processed) {

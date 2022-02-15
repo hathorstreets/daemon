@@ -130,11 +130,11 @@ public class DaemonNftImageService {
             }
             if (city.getState() == MintState.SENDING_NFT.ordinal()) {
                logger.info("Creating image with traits");
-               Pair<String, NftProperties> nft = nftImageService.createImage(city.getCity(), true);
+               Pair<String, String> nft = nftImageService.createImage(city.getCity(), true);
                logger.info("Creating image without traits");
-               Pair<String, NftProperties> nftWithoutTraits = nftImageService.createImage(city.getCity(), false);
-               if (nft != null && nft.getFirst() != null &&
-                       nftWithoutTraits != null && nftWithoutTraits.getFirst() != null) {
+               Pair<String, String> nftWithoutTraits = nftImageService.createImage(city.getCity(), false);
+               if (nft != null && nft.getFirst() != null && nft.getSecond() != null &&
+                   nftWithoutTraits != null && nftWithoutTraits.getFirst() != null && nftWithoutTraits.getSecond() != null) {
                   logger.info("Successfully uploaded images!");
                   city.setIpfs("https://ipfs.io/ipfs/" + nft.getFirst());
                   city.setIpfsWithoutTraits("https://ipfs.io/ipfs/" + nftWithoutTraits.getFirst());
@@ -170,9 +170,9 @@ public class DaemonNftImageService {
                      symbol = "HSC" + order;
                      symbolWoTraits = "HSCC" + order;
                   }
-                  String nftHashWithTraits = walletService.createNft(name, symbol, "ipfs://ipfs/" + nft.getFirst());
+                  String nftHashWithTraits = walletService.createNft(name, symbol, "ipfs://ipfs/" + nft.getSecond());
                   logger.info("Creating NFT without traits");
-                  String nftHashWithoutTraits = walletService.createNft(name, symbolWoTraits, "ipfs://ipfs/" + nftWithoutTraits.getFirst());
+                  String nftHashWithoutTraits = walletService.createNft(name, symbolWoTraits, "ipfs://ipfs/" + nftWithoutTraits.getSecond());
                   city.setToken(nftHashWithTraits);
                   city.setTokenWithoutTraits(nftHashWithoutTraits);
                   retryTemplate.execute(context -> {

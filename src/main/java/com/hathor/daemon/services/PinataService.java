@@ -11,6 +11,7 @@ import com.hathor.daemon.services.dto.SendTransaction;
 import com.hathor.daemon.services.image.NftAttribute;
 import com.hathor.daemon.services.image.NftProperties;
 import com.hathor.daemon.services.image.PinataResponse;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.*;
@@ -60,15 +61,16 @@ public class PinataService {
    }
 
    public String uploadJson(NftProperties nft) throws Exception {
+      String name = nft.getName() + UUID.randomUUID() + ".json";
       String json = gson.toJson(nft);
-      File file = new File(nft.getName() + ".json");
+      File file = new File(name);
       FileWriter fileWriter = new FileWriter(file);
       fileWriter.write(json);
       fileWriter.flush();
       fileWriter.close();
 
       FileSystemResource fsr = new FileSystemResource(file);
-      return uploadFile(nft.getName() + ".json", fsr);
+      return uploadFile(name, fsr);
    }
 
    public String uploadFile(String name, FileSystemResource fsr) throws Exception {
