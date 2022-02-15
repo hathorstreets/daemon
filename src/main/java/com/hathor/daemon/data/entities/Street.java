@@ -18,6 +18,8 @@ public class Street {
 
    private boolean taken;
 
+   private boolean burned;
+
    @ManyToOne
    private Mint mint;
 
@@ -79,5 +81,13 @@ public class Street {
 
    public void setStreetAttributes(StreetAttributes streetAttributes) {
       this.streetAttributes = streetAttributes;
+   }
+
+   public boolean isBurned() {
+      return burned;
+   }
+
+   public void setBurned(boolean burned) {
+      this.burned = burned;
    }
 }

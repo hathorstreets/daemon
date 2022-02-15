@@ -1,12 +1,12 @@
 package com.hathor.daemon.services;
 
-import com.hathor.daemon.data.entities.City;
 import com.hathor.daemon.data.entities.NftCity;
 import com.hathor.daemon.data.entities.NftCityStreet;
 import com.hathor.daemon.data.entities.enums.MintState;
 import com.hathor.daemon.data.repositories.CityRepository;
 import com.hathor.daemon.data.repositories.NftCityRepository;
 import com.hathor.daemon.data.repositories.NftCityStreetRepository;
+import com.hathor.daemon.data.repositories.StreetRepository;
 import com.hathor.daemon.services.image.NftProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,11 +28,13 @@ public class DaemonNftImageService {
    private final WalletService walletService;
    private final PinataService pinataService;
    private final NftCityStreetRepository nftCityStreetRepository;
+   private final StreetRepository streetRepository;
 
    Logger logger = LoggerFactory.getLogger(DaemonImageService.class);
 
    public DaemonNftImageService(CityRepository cityRepository, NftImageService nftImageService,
-                                NftCityRepository nftCityRepository, RetryTemplate retryTemplate, WalletService walletService, PinataService pinataService, NftCityStreetRepository nftCityStreetRepository) {
+           NftCityRepository nftCityRepository, RetryTemplate retryTemplate, WalletService walletService, PinataService pinataService, NftCityStreetRepository nftCityStreetRepository,
+           StreetRepository streetRepository) {
       this.cityRepository = cityRepository;
       this.nftImageService = nftImageService;
       this.nftCityRepository = nftCityRepository;
@@ -40,6 +42,7 @@ public class DaemonNftImageService {
       this.walletService = walletService;
       this.pinataService = pinataService;
       this.nftCityStreetRepository = nftCityStreetRepository;
+      this.streetRepository = streetRepository;
    }
 
    @Scheduled(fixedDelay = 10000)
@@ -92,6 +95,17 @@ public class DaemonNftImageService {
                });
             } catch (Exception ex) {
                logger.error("Unable to save city after burn", ex);
+            }
+            for(NftCityStreet s : city.getStreets()) {
+               s.getStreet().setBurned(true);
+               try {
+                  retryTemplate.execute(context -> {
+                     streetRepository.save(s.getStreet());
+                     return null;
+                  });
+               } catch (Exception ex) {
+                  logger.error("Unable to save street to burn " + s.getStreet().getId(), ex);
+               }
             }
          }
       }
