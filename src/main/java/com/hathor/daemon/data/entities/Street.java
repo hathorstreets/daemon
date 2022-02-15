@@ -20,6 +20,8 @@ public class Street {
 
    private boolean burned;
 
+   private String burnTransaction;
+
    @ManyToOne
    private Mint mint;
 
@@ -89,5 +91,13 @@ public class Street {
 
    public void setBurned(boolean burned) {
       this.burned = burned;
+   }
+
+   public String getBurnTransaction() {
+      return burnTransaction;
+   }
+
+   public void setBurnTransaction(String burnTransaction) {
+      this.burnTransaction = burnTransaction;
    }
 }
